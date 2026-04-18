@@ -2,35 +2,32 @@
 #include "Output.hpp"
 #include "PotentialSolver.hpp"
 #include "Species.hpp"
+#include "Config.hpp"
+#include <iostream>
 
-int main() {
-    /* ================= problem configuration ================= */
-    int xcount = 20, ycount = 20, zcount = 20;          // cell counts per axis (nodes = cells + 1)
-    double dx = 0.01, dy = 0.01, dz = 0.01;             // grid spacing (cell size)
-    double3 origin = {-0.1, -0.1, 0.0};                 // domain origin (x0)
-    double n0 = 0;                                    // reference number density (1/m^3)
-    double dt = 2e-10;                                   // time step
-    int num_ts = 1;                                  // number of time steps
-    /* ========================================================= */
+int main(int argc, char *argv[]) {
+    std::string config_path = (argc > 1) ? argv[1] : "config.txt";
+    Config cfg = Config::load(config_path);
 
-    double3 xm = {origin[0] + xcount*dx,
-                  origin[1] + ycount*dy,
-                  origin[2] + zcount*dz};
+    double3 origin = {cfg.origin_x, cfg.origin_y, cfg.origin_z};
+    double3 xm = {origin[0] + cfg.xcount*cfg.dx,
+                  origin[1] + cfg.ycount*cfg.dy,
+                  origin[2] + cfg.zcount*cfg.dz};
 
-    World world(xcount+1, ycount+1, zcount+1);
+    World world(cfg.xcount+1, cfg.ycount+1, cfg.zcount+1);
     world.setExtents(origin, xm);
-    world.setTime(dt, num_ts);
+    world.setTime(cfg.dt, cfg.num_ts);
 
     std::vector<Species> species;
     species.reserve(2);
     species.push_back(Species("O+", 16*Const::AMU, Const::QE, world));
     species.push_back(Species("e-", Const::ME, -1*Const::QE, world));
 
-    int3 np_eles_grid = {xcount+1, ycount+1, zcount+1};
-    int3 np_ions_grid = {2*xcount+1, 2*ycount+1, 2*zcount+1};
+    int3 np_eles_grid = {cfg.xcount+1, cfg.ycount+1, cfg.zcount+1};
+    int3 np_ions_grid = {2*cfg.xcount+1, 2*cfg.ycount+1, 2*cfg.zcount+1};
 
-    species[0].loadParticlesBoxQS(world.getX0(), world.getXm(), n0, np_ions_grid);
-    species[1].loadParticlesBoxQS(world.getX0(), world.getXc(), n0, np_eles_grid);
+    species[0].loadParticlesBoxQS(world.getX0(), world.getXm(), cfg.ni, np_ions_grid);
+    species[1].loadParticlesBoxQS(world.getX0(), world.getXc(), cfg.ne, np_eles_grid);
 
     for (Species &sp: species) {
         sp.advance();
